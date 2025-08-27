@@ -1,5 +1,5 @@
 import { APP_CONFIG, API_ENDPOINTS } from '@/constants/app';
-import { ShopifyCollection, ShopifyProduct, ImageUpdateOperation, ImageUpdateCSVRow } from '@/types/shopify';
+import { ShopifyCollection, ShopifyProduct, ImageUpdateOperation } from '@/types/shopify';
 
 export class ServerApiService {
   private baseUrl: string;

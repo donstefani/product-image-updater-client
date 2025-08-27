@@ -1,5 +1,5 @@
 import React from 'react';
-import { Page, Text } from '@shopify/polaris';
+import { Page } from '@shopify/polaris';
 
 interface AppLayoutProps {
   title: string;

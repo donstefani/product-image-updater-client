@@ -1,17 +1,17 @@
 import { useState } from 'react';
-import { Card, Text, Modal } from '@shopify/polaris';
+import { Card, Text, Modal, Button } from '@shopify/polaris';
 import { AppLayout } from '@/components/layout/AppLayout';
 import { CollectionSearch } from '@/components/collections/CollectionSearch';
 import { ProductGrid } from '@/components/products/ProductGrid';
 import { ImageUpdatePanel } from '@/components/image-update/ImageUpdatePanel';
-import { ShopifyCollection, ShopifyProduct } from '@/types/shopify';
+import { ShopifyCollection, ShopifyProduct, ImageUpdateOperation } from '@/types/shopify';
 import { useShopifyAuth } from '@/hooks/useShopifyAuth';
 
 export function HomePage() {
   const { shop, serverApiService } = useShopifyAuth();
   const [selectedCollection, setSelectedCollection] = useState<ShopifyCollection | null>(null);
   const [products, setProducts] = useState<ShopifyProduct[]>([]);
-  const [selectedProducts, setSelectedProducts] = useState<ShopifyProduct[]>([]);
+  const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [productError, setProductError] = useState<string | null>(null);
   
@@ -27,7 +27,7 @@ export function HomePage() {
     setSelectedCollection(collection);
     setIsLoadingProducts(true);
     setProductError(null);
-    setSelectedProducts([]); // Clear selections when changing collection
+    setSelectedProductIds(new Set()); // Clear selections when changing collection
     
     try {
       console.log('Fetching products from collection:', collection.id);
@@ -46,28 +46,33 @@ export function HomePage() {
     }
   };
 
-  const handleProductsSelect = (products: ShopifyProduct[]) => {
-    console.log('Selected products:', products);
-    setSelectedProducts(products);
+  const handleProductsSelect = (productIds: string[]) => {
+    console.log('Selected product IDs:', productIds);
+    setSelectedProductIds(new Set(productIds));
   };
 
-  const handleProductSelect = (product: ShopifyProduct) => {
-    console.log('Selected product:', product);
+  const handleProductSelect = (productId: string) => {
+    console.log('Selected product ID:', productId);
     // Toggle selection for single product
-    const isSelected = selectedProducts.some(p => p.id === product.id);
-    if (isSelected) {
-      setSelectedProducts(selectedProducts.filter(p => p.id !== product.id));
+    const newSelected = new Set(selectedProductIds);
+    if (newSelected.has(productId)) {
+      newSelected.delete(productId);
     } else {
-      setSelectedProducts([...selectedProducts, product]);
+      newSelected.add(productId);
     }
+    setSelectedProductIds(newSelected);
   };
 
-  const handleImageUpdateComplete = () => {
+  const handleImageUpdateComplete = (operation: ImageUpdateOperation) => {
+    console.log('Image update completed:', operation);
     // Refresh products after image update
     if (selectedCollection) {
       handleCollectionSelect(selectedCollection);
     }
   };
+
+  // Get selected products from IDs
+  const selectedProducts = products.filter(product => selectedProductIds.has(product.id));
 
   return (
     <AppLayout title="Product Image Updater">
@@ -78,14 +83,8 @@ export function HomePage() {
           <>
             {/* Image Update Panel */}
             <ImageUpdatePanel
-              products={products}
               selectedProducts={selectedProducts}
-              onProductSelect={handleProductSelect}
-              onProductsSelect={handleProductsSelect}
-              onImageUpdateComplete={handleImageUpdateComplete}
-              serverApiService={serverApiService}
-              collectionName={selectedCollection.title}
-              collectionId={selectedCollection.id}
+              onOperationComplete={handleImageUpdateComplete}
             />
             
             {/* Products Display */}
@@ -98,35 +97,19 @@ export function HomePage() {
                     alignItems: 'center'
                   }}>
                     <Text variant="headingMd" as="h2">
-                      Products in "{selectedCollection.title}"
+                      Products in {selectedCollection.title}
                     </Text>
                     
-                    <button
-                      onClick={() => setShowInfoDialog(true)}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        cursor: 'pointer',
-                        padding: '0.5rem',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center'
-                      }}
-                      title="Image update help"
-                    >
-                      <svg
-                        width="20"
-                        height="20"
-                        viewBox="0 0 20 20"
-                        fill="none"
-                        xmlns="http://www.w3.org/2000/svg"
+                    <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                      <Button 
+                        size="slim"
+                        onClick={() => setShowInfoDialog(true)}
                       >
-                        <circle cx="10" cy="10" r="9" stroke="#d82c0d" strokeWidth="2" fill="none"/>
-                        <path d="M10 6v4M10 14h.01" stroke="#d82c0d" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
-                      </svg>
-                    </button>
+                        How it works
+                      </Button>
+                    </div>
                   </div>
-                  
+
                   {productError && (
                     <div style={{ 
                       padding: '0.75rem', 
@@ -138,86 +121,93 @@ export function HomePage() {
                       <Text variant="bodySm" as="p">{productError}</Text>
                     </div>
                   )}
-                  
-                  {isLoadingProducts ? (
+
+                  {isLoadingProducts && (
                     <div style={{ 
-                      padding: '2rem', 
+                      padding: '1rem', 
                       textAlign: 'center',
                       color: '#637381'
                     }}>
                       <Text variant="bodyMd" as="p">Loading products...</Text>
                     </div>
-                  ) : (
-                    <ProductGrid 
+                  )}
+
+                  {!isLoadingProducts && products.length > 0 && (
+                    <ProductGrid
                       products={products}
-                      selectedProducts={selectedProducts}
+                      selectedProducts={selectedProductIds}
                       onProductSelect={handleProductSelect}
                       onProductsSelect={handleProductsSelect}
                     />
+                  )}
+
+                  {!isLoadingProducts && products.length === 0 && !productError && (
+                    <div style={{ 
+                      padding: '2rem', 
+                      textAlign: 'center',
+                      color: '#637381'
+                    }}>
+                      <Text variant="bodyMd" as="p">
+                        No products found in this collection.
+                      </Text>
+                    </div>
                   )}
                 </div>
               </div>
             </Card>
           </>
         )}
+
+        {/* Information Dialog */}
+        <Modal
+          open={showInfoDialog}
+          onClose={() => setShowInfoDialog(false)}
+          title="How Product Image Updater Works"
+          primaryAction={{
+            content: 'Got it',
+            onAction: () => setShowInfoDialog(false),
+          }}
+        >
+          <Modal.Section>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
+              <Text variant="bodyMd" as="p">
+                The Product Image Updater helps you update product images in bulk:
+              </Text>
+              
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
+                <Text variant="bodyMd" as="p" fontWeight="bold">1. Search Collections</Text>
+                <Text variant="bodySm" as="p">
+                  Find the collection containing products you want to update
+                </Text>
+                
+                <Text variant="bodyMd" as="p" fontWeight="bold">2. Select Products</Text>
+                <Text variant="bodySm" as="p">
+                  Choose which products need image updates
+                </Text>
+                
+                <Text variant="bodyMd" as="p" fontWeight="bold">3. Create Operation</Text>
+                <Text variant="bodySm" as="p">
+                  Generate a CSV template with current image information
+                </Text>
+                
+                <Text variant="bodyMd" as="p" fontWeight="bold">4. Update CSV</Text>
+                <Text variant="bodySm" as="p">
+                  Fill in the new image URLs in the CSV file
+                </Text>
+                
+                <Text variant="bodyMd" as="p" fontWeight="bold">5. Process Updates</Text>
+                <Text variant="bodySm" as="p">
+                  Upload the CSV and apply the image changes
+                </Text>
+              </div>
+              
+              <Text variant="bodyMd" as="p">
+                This tool ensures that variant images are correctly updated and old images are cleaned up.
+              </Text>
+            </div>
+          </Modal.Section>
+        </Modal>
       </div>
-      
-      {/* Information Dialog */}
-      <Modal
-        open={showInfoDialog}
-        onClose={() => setShowInfoDialog(false)}
-        title="Image Update Help"
-        primaryAction={{
-          content: 'Got it',
-          onAction: () => setShowInfoDialog(false),
-        }}
-      >
-        <Modal.Section>
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            <div>
-              <Text variant="headingSm" as="h4" fontWeight="bold">
-                How to Use Image Update Operations
-              </Text>
-              <Text variant="bodyMd" as="p">
-                1. <strong>Select a Collection:</strong> Choose the collection containing products you want to update.
-              </Text>
-              <Text variant="bodyMd" as="p">
-                2. <strong>Select Products:</strong> Use the "Select All" button or individually select products from the list.
-              </Text>
-              <Text variant="bodyMd" as="p">
-                3. <strong>Create Operation:</strong> Click "Create Image Update Operation" to generate a CSV template.
-              </Text>
-              <Text variant="bodyMd" as="p">
-                4. <strong>Download CSV:</strong> Get the template with current image information and IDs.
-              </Text>
-              <Text variant="bodyMd" as="p">
-                5. <strong>Update URLs:</strong> Edit the "New Image URL" column in the CSV file with your new image URLs.
-              </Text>
-              <Text variant="bodyMd" as="p">
-                6. <strong>Upload & Process:</strong> Upload the updated CSV and process the image changes.
-              </Text>
-            </div>
-            
-            <div style={{ 
-              padding: '1rem', 
-              backgroundColor: '#f6f6f7', 
-              borderRadius: '4px',
-              border: '1px solid #e1e3e5'
-            }}>
-              <Text variant="bodySm" as="p" fontWeight="bold">
-                Important Notes:
-              </Text>
-              <Text variant="bodySm" as="p">
-                • The CSV includes current image IDs to handle variant-image relationships
-                • New image URLs must be publicly accessible
-                • Images are processed in order (first image becomes the main product image)
-                • Operation history tracks all changes with rollback capability
-                • Rate limiting is applied to respect Shopify API limits
-              </Text>
-            </div>
-          </div>
-        </Modal.Section>
-      </Modal>
     </AppLayout>
   );
 }
