@@ -1,7 +1,7 @@
 export const APP_CONFIG = {
   title: 'Product Image Updater',
   version: '1.0.0',
-  apiBaseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://h0bru07jm2.execute-api.us-east-2.amazonaws.com/production',
 } as const;
 
 export const API_ENDPOINTS = {
