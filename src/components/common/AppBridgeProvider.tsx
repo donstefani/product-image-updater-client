@@ -17,12 +17,19 @@ export function AppBridgeProviderWrapper({ children }: AppBridgeProviderProps) {
 
     if (shop && host) {
       // Shopify embedded app scenario
-      const appBridgeConfig = {
-        apiKey: import.meta.env.VITE_SHOPIFY_API_KEY || '',
-        host: host,
-        forceRedirect: true,
-      };
-      setConfig(appBridgeConfig);
+      const apiKey = import.meta.env.VITE_SHOPIFY_API_KEY;
+      if (apiKey) {
+        const appBridgeConfig = {
+          apiKey: apiKey,
+          host: host,
+          forceRedirect: true,
+        };
+        setConfig(appBridgeConfig);
+      } else {
+        // No API key available, but we can still work with server API
+        console.warn('Shopify API key not configured, using server-only mode');
+        setConfig({ isServerOnly: true, shop, host });
+      }
     } else {
       // Localhost development scenario - no App Bridge needed
       setConfig({ isLocalhost: true });
@@ -45,8 +52,8 @@ export function AppBridgeProviderWrapper({ children }: AppBridgeProviderProps) {
     );
   }
 
-  // For localhost development, render without App Bridge
-  if (config?.isLocalhost) {
+  // For localhost development or server-only mode, render without App Bridge
+  if (config?.isLocalhost || config?.isServerOnly) {
     return <>{children}</>;
   }
 
