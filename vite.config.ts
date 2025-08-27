@@ -11,8 +11,14 @@ export default defineConfig({
     },
   },
   server: {
-    port: 3001,
+    port: 3000,
     host: true,
+    allowedHosts: [
+      'localhost',
+      '127.0.0.1',
+      '.ngrok-free.app',
+      '.ngrok.io',
+    ],
   },
   build: {
     outDir: 'dist',
