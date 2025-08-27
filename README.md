@@ -6,7 +6,7 @@ A React-based Shopify app for updating product images by collection. This app al
 - View products with image thumbnails
 - Select products (all or individual)
 - Download CSV templates with current image information
-- Upload updated CSV files with new image URLs
+- Upload updated CSV files with new product image URLs
 - Process image updates with rollback capability
 
 ## Features
