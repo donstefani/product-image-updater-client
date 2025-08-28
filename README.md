@@ -13,7 +13,7 @@ A React-based Shopify app for updating product images by collection. This app al
 
 ### 🖼️ Image Management
 - **Minimal Product List**: Shows product name, number of images, and select button
-- **Expandable Details**: Click "Show details" to see all images and storefront link
+- **Expandable Details**: Click "Show details" to see all product images and storefront link
 - **Image Thumbnails**: Visual preview of all product images
 - **Storefront Integration**: Direct link to view products in the store
 
