@@ -28,7 +28,16 @@ export class ServerApiService {
 
   // Collection operations
   async searchCollections(query: string): Promise<{ collections: ShopifyCollection[] }> {
-    return this.makeRequest(`${API_ENDPOINTS.collections}/search?q=${encodeURIComponent(query)}`);
+    // The server doesn't have a search endpoint, so we get all collections and filter client-side
+    const response = await this.makeRequest<{ collections: ShopifyCollection[] }>(`${API_ENDPOINTS.collections}`);
+    
+    // Filter collections based on the search query
+    const filteredCollections = response.collections.filter((collection: ShopifyCollection) =>
+      collection.title.toLowerCase().includes(query.toLowerCase()) ||
+      collection.handle.toLowerCase().includes(query.toLowerCase())
+    );
+    
+    return { collections: filteredCollections };
   }
 
   async getCollection(id: string): Promise<{ collection: ShopifyCollection }> {
@@ -37,7 +46,10 @@ export class ServerApiService {
 
   // Product operations
   async getProductsFromCollection(collectionId: string, limit: number = 50): Promise<{ products: ShopifyProduct[] }> {
-    return this.makeRequest(`${API_ENDPOINTS.products}/collection/${collectionId}?limit=${limit}`);
+    console.log('Getting products from collection:', collectionId, 'limit:', limit);
+    const response = await this.makeRequest<{ products: ShopifyProduct[] }>(`${API_ENDPOINTS.products}?collection_id=${collectionId}&limit=${limit}`);
+    console.log('Products response:', response);
+    return response;
   }
 
   // Image update operations

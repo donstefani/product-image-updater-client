@@ -19,9 +19,19 @@ export function HomePage() {
   const [showInfoDialog, setShowInfoDialog] = useState(false);
 
   const handleCollectionSelect = async (collection: ShopifyCollection) => {
-    if (!shop || !serverApiService) {
-      setProductError('Shop or API service not available');
+    console.log('handleCollectionSelect called with:', collection);
+    console.log('shop:', shop);
+    console.log('serverApiService:', serverApiService);
+    
+    if (!serverApiService) {
+      console.log('API service not available');
+      setProductError('API service not available');
       return;
+    }
+    
+    // For local development, we can proceed without shop parameter
+    if (!shop) {
+      console.log('No shop parameter found, proceeding with local development mode');
     }
 
     setSelectedCollection(collection);
@@ -84,6 +94,7 @@ export function HomePage() {
             {/* Image Update Panel */}
             <ImageUpdatePanel
               selectedProducts={selectedProducts}
+              selectedCollection={selectedCollection}
               onOperationComplete={handleImageUpdateComplete}
             />
             

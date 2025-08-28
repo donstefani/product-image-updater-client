@@ -72,13 +72,17 @@ export interface ImageUpdateCSVRow {
 }
 
 export interface ImageUpdateOperation {
-  id: string;
-  shop: string;
-  collection_id: string;
-  collection_name: string;
-  products_count: number;
+  operationId: string;
+  timestamp: string;
+  shopDomain: string;
+  userId: string;
+  userName: string;
+  collectionId: string;
+  collectionName: string;
+  beforeSnapshotS3Key: string;
+  afterSnapshotS3Key: string;
   status: 'pending' | 'processing' | 'completed' | 'failed';
-  created_at: string;
-  completed_at?: string;
-  error_message?: string;
+  productsCount: number;
+  imagesUpdated: number;
+  errorMessage?: string;
 }

@@ -5,8 +5,8 @@ export const APP_CONFIG = {
 } as const;
 
 export const API_ENDPOINTS = {
-  collections: '/api/collections',
-  products: '/api/products',
+  collections: '/api/shopify/collections',
+  products: '/api/shopify/products',
   imageUpdates: '/api/image-updates',
   operations: '/api/operations',
 } as const;

@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { Card, TextField, Button, Text, Spinner } from '@shopify/polaris';
 import { ShopifyCollection } from '@/types/shopify';
+import { ServerApiService } from '@/services/serverApiService';
 
 interface CollectionSearchProps {
   onCollectionSelect: (collection: ShopifyCollection) => void;
@@ -11,6 +12,7 @@ export function CollectionSearch({ onCollectionSelect }: CollectionSearchProps) 
   const [collections, setCollections] = useState<ShopifyCollection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [serverApiService] = useState(() => new ServerApiService());
 
   const handleSearch = async () => {
     if (!searchQuery.trim()) return;
@@ -19,42 +21,17 @@ export function CollectionSearch({ onCollectionSelect }: CollectionSearchProps) 
     setError(null);
 
     try {
-      // For now, we'll simulate a search
-      // In the real implementation, this would call the backend API
-      const mockCollections: ShopifyCollection[] = [
-        {
-          id: 'gid://shopify/Collection/123456789',
-          title: 'Summer Collection',
-          handle: 'summer-collection',
-          products_count: 25,
-          description: 'Beautiful summer styles',
-          image: {
-            src: 'https://cdn.shopify.com/s/files/1/0000/0000/collections/summer.jpg',
-            alt: 'Summer Collection'
-          }
-        },
-        {
-          id: 'gid://shopify/Collection/987654321',
-          title: 'Winter Collection',
-          handle: 'winter-collection',
-          products_count: 18,
-          description: 'Cozy winter essentials',
-          image: {
-            src: 'https://cdn.shopify.com/s/files/1/0000/0000/collections/winter.jpg',
-            alt: 'Winter Collection'
-          }
-        }
-      ];
-
-      // Filter collections based on search query
-      const filteredCollections = mockCollections.filter(collection =>
-        collection.title.toLowerCase().includes(searchQuery.toLowerCase())
-      );
-
-      setCollections(filteredCollections);
+      console.log('Searching collections with query:', searchQuery);
+      
+      // Call the server API to search collections
+      const response = await serverApiService.searchCollections(searchQuery);
+      setCollections(response.collections);
+      
+      console.log('Collections found:', response.collections.length);
     } catch (err) {
-      setError('Failed to search collections. Please try again.');
       console.error('Collection search error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to search collections. Please try again.');
+      setCollections([]);
     } finally {
       setIsLoading(false);
     }
@@ -143,7 +120,10 @@ export function CollectionSearch({ onCollectionSelect }: CollectionSearchProps) 
                   onMouseLeave={(e) => {
                     e.currentTarget.style.backgroundColor = 'white';
                   }}
-                  onClick={() => onCollectionSelect(collection)}
+                  onClick={() => {
+                    console.log('Collection selected:', collection);
+                    onCollectionSelect(collection);
+                  }}
                 >
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                     <div>
@@ -154,24 +134,18 @@ export function CollectionSearch({ onCollectionSelect }: CollectionSearchProps) 
                         {collection.products_count} products
                       </Text>
                     </div>
-                    <Button size="slim">
+                    <Button 
+                      size="slim"
+                      onClick={() => {
+                        console.log('Select button clicked for collection:', collection);
+                        onCollectionSelect(collection);
+                      }}
+                    >
                       Select
                     </Button>
                   </div>
                 </div>
               ))}
-            </div>
-          )}
-
-          {!isLoading && searchQuery && collections.length === 0 && !error && (
-            <div style={{ 
-              padding: '1rem', 
-              textAlign: 'center',
-              color: '#637381'
-            }}>
-              <Text variant="bodyMd" as="p">
-                No collections found matching "{searchQuery}"
-              </Text>
             </div>
           )}
         </div>
