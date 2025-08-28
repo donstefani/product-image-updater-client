@@ -8,6 +8,7 @@ interface AppBridgeProviderProps {
 export function AppBridgeProviderWrapper({ children }: AppBridgeProviderProps) {
   const [config, setConfig] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     // Get shop from URL parameters
@@ -25,13 +26,15 @@ export function AppBridgeProviderWrapper({ children }: AppBridgeProviderProps) {
           forceRedirect: true,
         };
         setConfig(appBridgeConfig);
+        console.log('App Bridge configured for embedded app');
       } else {
-        // No API key available, but we can still work with server API
-        console.warn('Shopify API key not configured, using server-only mode');
-        setConfig({ isServerOnly: true, shop, host });
+        // No API key available
+        setError('Shopify API key not configured. Please check your environment variables.');
+        console.error('VITE_SHOPIFY_API_KEY is not set in environment variables');
       }
     } else {
       // Localhost development scenario - no App Bridge needed
+      console.log('Running in localhost mode - App Bridge not required');
       setConfig({ isLocalhost: true });
     }
     setIsLoading(false);
@@ -52,8 +55,36 @@ export function AppBridgeProviderWrapper({ children }: AppBridgeProviderProps) {
     );
   }
 
-  // For localhost development or server-only mode, render without App Bridge
-  if (config?.isLocalhost || config?.isServerOnly) {
+  if (error) {
+    return (
+      <div style={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        height: '100vh',
+        flexDirection: 'column',
+        gap: '1rem',
+        padding: '2rem',
+        textAlign: 'center'
+      }}>
+        <div style={{ 
+          padding: '1rem', 
+          backgroundColor: '#fef7f7', 
+          border: '1px solid #d82c0d', 
+          borderRadius: '4px',
+          color: '#d82c0d',
+          maxWidth: '500px'
+        }}>
+          <h3>Configuration Error</h3>
+          <p>{error}</p>
+          <p>Please ensure VITE_SHOPIFY_API_KEY is set in your .env file.</p>
+        </div>
+      </div>
+    );
+  }
+
+  // For localhost development, render without App Bridge
+  if (config?.isLocalhost) {
     return <>{children}</>;
   }
 

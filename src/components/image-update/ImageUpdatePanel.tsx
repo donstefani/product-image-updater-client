@@ -1,15 +1,17 @@
 import React, { useState } from 'react';
 import { Card, Text, Button, Modal, Banner } from '@shopify/polaris';
-import { ShopifyProduct, ImageUpdateOperation } from '@/types/shopify';
-
+import { ShopifyProduct, ShopifyCollection, ImageUpdateOperation } from '@/types/shopify';
+import { ServerApiService } from '@/services/serverApiService';
 
 interface ImageUpdatePanelProps {
   selectedProducts: ShopifyProduct[];
+  selectedCollection: ShopifyCollection;
   onOperationComplete?: (operation: ImageUpdateOperation) => void;
 }
 
 export function ImageUpdatePanel({ 
   selectedProducts, 
+  selectedCollection,
   onOperationComplete 
 }: ImageUpdatePanelProps) {
   const [currentOperation, setCurrentOperation] = useState<ImageUpdateOperation | null>(null);
@@ -19,7 +21,7 @@ export function ImageUpdatePanel({
   const [processingSuccess, setProcessingSuccess] = useState<string | null>(null);
   const [showUploadModal, setShowUploadModal] = useState(false);
   const [uploadedFile, setUploadedFile] = useState<File | null>(null);
-
+  const [serverApiService] = useState(() => new ServerApiService());
 
   // Computed properties for UI state
   const canCreateOperation = selectedProducts.length > 0 && !currentOperation;
@@ -34,20 +36,18 @@ export function ImageUpdatePanel({
     setProcessingError(null);
 
     try {
-      // For now, we'll create a mock operation
-      // In the real implementation, this would call the backend API
-      const mockOperation: ImageUpdateOperation = {
-        id: 'op-' + Date.now(),
-        shop: 'don-stefani-demo-store.myshopify.com',
-        collection_id: 'gid://shopify/Collection/123456789',
-        collection_name: 'Test Collection',
-        products_count: selectedProducts.length,
-        status: 'pending',
-        created_at: new Date().toISOString(),
-      };
-
-      setCurrentOperation(mockOperation);
+      console.log('Creating image update operation for', selectedProducts.length, 'products');
+      
+      // Call the real server API to create an operation
+      const response = await serverApiService.createImageUpdateOperation(
+        selectedCollection.id,
+        selectedProducts.map(p => p.id)
+      );
+      
+      console.log('Full response from create operation:', response);
+      setCurrentOperation(response.operation);
       setProcessingSuccess('Operation created successfully!');
+      console.log('Operation created:', response.operation);
     } catch (error) {
       setProcessingError('Failed to create operation. Please try again.');
       console.error('Create operation error:', error);
@@ -57,23 +57,22 @@ export function ImageUpdatePanel({
   };
 
   const handleDownloadCSV = async () => {
-    if (!currentOperation) return;
+    console.log('handleDownloadCSV called, currentOperation:', currentOperation);
+    if (!currentOperation) {
+      console.error('No current operation available');
+      return;
+    }
 
     try {
-      // For now, we'll create a mock CSV download
-      // In the real implementation, this would call the backend API
-      const csvContent = [
-        'product_id,product_handle,current_image_id,collection_name,new_image_url',
-        ...selectedProducts.map(product => 
-          `${product.id},${product.handle},${product.images[0]?.id || ''},${currentOperation.collection_name},`
-        )
-      ].join('\n');
-
-      const blob = new Blob([csvContent], { type: 'text/csv' });
-      const url = window.URL.createObjectURL(blob);
+      console.log('Downloading CSV for operation:', currentOperation.operationId);
+      
+      // Call the real server API to download CSV
+      const csvBlob = await serverApiService.downloadImageUpdateCSV(currentOperation.operationId);
+      
+      const url = window.URL.createObjectURL(csvBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `image-updates-${currentOperation.id}.csv`;
+      a.download = `image-updates-${currentOperation.operationId}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -90,11 +89,14 @@ export function ImageUpdatePanel({
     if (!currentOperation) return;
 
     try {
-      // For now, we'll simulate file upload
-      // In the real implementation, this would call the backend API
+      console.log('Uploading CSV for operation:', currentOperation.operationId);
+      
+      // Call the real server API to upload CSV
+      const response = await serverApiService.uploadImageUpdateCSV(currentOperation.operationId, file);
+      
       setUploadedFile(file);
       setShowUploadModal(false);
-      setProcessingSuccess('CSV file uploaded successfully!');
+      setProcessingSuccess(response.message || 'CSV file uploaded successfully!');
     } catch (error) {
       setProcessingError('Failed to upload CSV file. Please try again.');
       console.error('Upload CSV error:', error);
@@ -108,18 +110,17 @@ export function ImageUpdatePanel({
     setProcessingError(null);
 
     try {
-      // For now, we'll simulate processing
-      // In the real implementation, this would call the backend API
-      await new Promise(resolve => setTimeout(resolve, 2000)); // Simulate processing time
-
-      const updatedOperation: ImageUpdateOperation = {
-        ...currentOperation,
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-      };
+      console.log('Processing image updates for operation:', currentOperation.operationId);
+      
+      // Call the real server API to process updates
+      const response = await serverApiService.processImageUpdates(currentOperation.operationId);
+      
+      // Get the updated operation status
+      const operationResponse = await serverApiService.getImageUpdateOperation(currentOperation.operationId);
+      const updatedOperation = operationResponse.operation;
 
       setCurrentOperation(updatedOperation);
-      setProcessingSuccess('Image updates processed successfully!');
+      setProcessingSuccess(response.message || 'Image updates processed successfully!');
       
       if (onOperationComplete) {
         onOperationComplete(updatedOperation);
@@ -199,11 +200,10 @@ export function ImageUpdatePanel({
                 </span>
               </div>
               <div style={{ display: 'flex', gap: '1rem', alignItems: 'center', fontSize: '12px' }}>
-                <Text variant="bodySm" as="span">Products: {currentOperation.products_count}</Text>
-                <Text variant="bodySm" as="span">Created: {new Date(currentOperation.created_at).toLocaleString()}</Text>
-                {currentOperation.completed_at && (
-                  <Text variant="bodySm" as="span">Completed: {new Date(currentOperation.completed_at).toLocaleString()}</Text>
-                )}
+                <Text variant="bodySm" as="span">Products: {currentOperation.productsCount}</Text>
+                <Text variant="bodySm" as="span">Created: {new Date(currentOperation.timestamp).toLocaleString()}</Text>
+                <Text variant="bodySm" as="span">Status: {currentOperation.status}</Text>
+                <Text variant="bodySm" as="span">Images Updated: {currentOperation.imagesUpdated}</Text>
               </div>
             </div>
           )}
