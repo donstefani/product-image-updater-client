@@ -16,6 +16,7 @@ export default defineConfig({
     host: true,
     allowedHosts: [
       'localhost',
+      'github.io',
       '127.0.0.1',
       '.ngrok-free.app',
       '.ngrok.io',
