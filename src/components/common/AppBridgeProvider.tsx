@@ -1,4 +1,7 @@
 import React, { useEffect, useState } from 'react';
+import { Provider as AppBridgeProvider } from '@shopify/app-bridge-react';
+import { Banner, Layout } from '@shopify/polaris';
+import { APP_CONFIG } from '@/constants/app';
 
 interface AppBridgeProviderProps {
   children: React.ReactNode;
@@ -16,7 +19,12 @@ export function AppBridgeProviderWrapper({ children }: AppBridgeProviderProps) {
 
     if (shop && host) {
       // Shopify embedded app scenario
-      setConfig({ isShopify: true });
+      setConfig({ 
+        isShopify: true, 
+        shop: shop,
+        host: host,
+        apiKey: APP_CONFIG.shopifyApiKey
+      });
     } else {
       // Localhost development scenario - no App Bridge needed
       setConfig({ isLocalhost: true });
@@ -44,9 +52,31 @@ export function AppBridgeProviderWrapper({ children }: AppBridgeProviderProps) {
     return <>{children}</>;
   }
 
-  // For Shopify embedded app, render without App Bridge (since we don't need it)
+  // For Shopify embedded app, render with App Bridge
   if (config?.isShopify) {
-    return <>{children}</>;
+    if (!config.apiKey || config.apiKey === 'your-api-key') {
+      return (
+        <Layout>
+          <Layout.Section>
+            <Banner tone="critical" title="Configuration Error">
+              <p>Shopify API key is not configured. Please set VITE_SHOPIFY_API_KEY in your environment variables.</p>
+            </Banner>
+          </Layout.Section>
+        </Layout>
+      );
+    }
+
+    return (
+      <AppBridgeProvider
+        config={{
+          apiKey: config.apiKey,
+          host: config.host,
+          forceRedirect: true,
+        }}
+      >
+        {children}
+      </AppBridgeProvider>
+    );
   }
 
   // Fallback: render without App Bridge
