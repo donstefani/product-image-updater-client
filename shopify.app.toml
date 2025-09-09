@@ -1,0 +1,21 @@
+# Learn more about configuring your app at https://shopify.dev/docs/apps/tools/cli/configuration
+
+client_id = "246c1953278e5b87e7185964b62646a6"
+name = "product-image-updater"
+application_url = "https://donstefani.github.io/product-image-updater-client/"
+embedded = true
+handle = "product-image-updater-2"
+
+[access_scopes]
+scopes = "read_products,write_products,read_product_listings"
+
+[webhooks]
+api_version = "2025-07"
+
+[auth]
+redirect_urls = [
+  "https://h0bru07jm2.execute-api.us-east-2.amazonaws.com/production/auth/callback"
+]
+
+[pos]
+embedded = false
