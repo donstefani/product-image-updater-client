@@ -4,6 +4,8 @@ import { AppProvider } from '@shopify/polaris';
 import '@shopify/polaris/build/esm/styles.css';
 import { HomePage } from '@/pages/HomePage';
 import { AppBridgeProviderWrapper } from '@/components/common/AppBridgeProvider';
+import { PasswordProvider, usePasswordAuth } from '@/contexts/PasswordContext';
+import { PasswordPage } from '@/components/auth/PasswordPage';
 
 // Global styles to ensure full width
 const globalStyles = `
@@ -24,12 +26,27 @@ const styleSheet = document.createElement('style');
 styleSheet.textContent = globalStyles;
 document.head.appendChild(styleSheet);
 
+// Main App Component that handles authentication
+function App() {
+  const { isAuthenticated, setIsAuthenticated } = usePasswordAuth();
+
+  if (!isAuthenticated) {
+    return <PasswordPage onPasswordCorrect={() => setIsAuthenticated(true)} />;
+  }
+
+  return (
+    <AppBridgeProviderWrapper>
+      <HomePage />
+    </AppBridgeProviderWrapper>
+  );
+}
+
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
-    <AppBridgeProviderWrapper>
-      <AppProvider i18n={{}}>
-        <HomePage />
-      </AppProvider>
-    </AppBridgeProviderWrapper>
+    <AppProvider i18n={{}}>
+      <PasswordProvider>
+        <App />
+      </PasswordProvider>
+    </AppProvider>
   </React.StrictMode>,
 );
