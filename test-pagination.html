@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pagination Test</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; }
+        .test-section { margin: 20px 0; padding: 15px; border: 1px solid #ccc; border-radius: 5px; }
+        .success { color: green; }
+        .error { color: red; }
+        .info { color: blue; }
+        button { padding: 10px 15px; margin: 5px; cursor: pointer; }
+        .results { margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <h1>PIU Client Pagination Test</h1>
+    
+    <div class="test-section">
+        <h2>Test 1: Basic Collections Request</h2>
+        <button onclick="testBasicRequest()">Test Basic Request</button>
+        <div id="basic-results" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 2: Pagination with Limit</h2>
+        <button onclick="testPagination()">Test Pagination</button>
+        <div id="pagination-results" class="results"></div>
+    </div>
+    
+    <div class="test-section">
+        <h2>Test 3: Load More Functionality</h2>
+        <button onclick="testLoadMore()">Test Load More</button>
+        <div id="loadmore-results" class="results"></div>
+    </div>
+
+    <script>
+        const API_BASE_URL = 'https://h0bru07jm2.execute-api.us-east-2.amazonaws.com/production';
+        
+        async function makeRequest(endpoint, options = {}) {
+            const url = `${API_BASE_URL}${endpoint}`;
+            
+            const response = await fetch(url, {
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...options.headers,
+                },
+                ...options,
+            });
+
+            if (!response.ok) {
+                throw new Error(`API request failed: ${response.status} ${response.statusText}`);
+            }
+
+            return response.json();
+        }
+
+        async function testBasicRequest() {
+            const resultsDiv = document.getElementById('basic-results');
+            resultsDiv.innerHTML = '<div class="info">Testing basic collections request...</div>';
+            
+            try {
+                const response = await makeRequest('/api/shopify/collections');
+                resultsDiv.innerHTML = `
+                    <div class="success">✓ Basic request successful!</div>
+                    <div>Found ${response.collections.length} collections</div>
+                    <div>Has pageInfo: ${response.pageInfo ? 'Yes' : 'No'}</div>
+                    ${response.pageInfo ? `<div>hasNextPage: ${response.pageInfo.hasNextPage}</div>` : '<div class="error">No pageInfo - server needs update</div>'}
+                `;
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testPagination() {
+            const resultsDiv = document.getElementById('pagination-results');
+            resultsDiv.innerHTML = '<div class="info">Testing pagination with limit=5...</div>';
+            
+            try {
+                const response = await makeRequest('/api/shopify/collections?limit=5');
+                if (response.pageInfo) {
+                    resultsDiv.innerHTML = `
+                        <div class="success">✓ Pagination request successful!</div>
+                        <div>Found ${response.collections.length} collections (limit: 5)</div>
+                        <div>hasNextPage: ${response.pageInfo.hasNextPage}</div>
+                        ${response.pageInfo.endCursor ? `<div>endCursor: ${response.pageInfo.endCursor.substring(0, 30)}...</div>` : ''}
+                    `;
+                } else {
+                    resultsDiv.innerHTML = `
+                        <div class="error">✗ No pageInfo in response</div>
+                        <div>Found ${response.collections.length} collections (limit: 5)</div>
+                        <div>Server needs to be updated with pagination support</div>
+                    `;
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+            }
+        }
+
+        async function testLoadMore() {
+            const resultsDiv = document.getElementById('loadmore-results');
+            resultsDiv.innerHTML = '<div class="info">Testing load more functionality...</div>';
+            
+            try {
+                // Get first page
+                const firstPage = await makeRequest('/api/shopify/collections?limit=3');
+                
+                if (firstPage.pageInfo && firstPage.pageInfo.hasNextPage && firstPage.pageInfo.endCursor) {
+                    // Get second page
+                    const secondPage = await makeRequest(`/api/shopify/collections?limit=3&after=${firstPage.pageInfo.endCursor}`);
+                    
+                    // Check for overlap
+                    const firstPageIds = firstPage.collections.map(c => c.id);
+                    const secondPageIds = secondPage.collections.map(c => c.id);
+                    const hasOverlap = firstPageIds.some(id => secondPageIds.includes(id));
+                    
+                    resultsDiv.innerHTML = `
+                        <div class="success">✓ Load more test successful!</div>
+                        <div>Page 1: ${firstPage.collections.length} collections</div>
+                        <div>Page 2: ${secondPage.collections.length} collections</div>
+                        <div>No overlap: ${!hasOverlap ? 'Yes ✓' : 'No ✗'}</div>
+                        <div>Page 2 hasNextPage: ${secondPage.pageInfo.hasNextPage}</div>
+                    `;
+                } else {
+                    if (!firstPage.pageInfo) {
+                        resultsDiv.innerHTML = `
+                            <div class="error">✗ No pageInfo in response</div>
+                            <div>Found ${firstPage.collections.length} collections</div>
+                            <div>Server needs to be updated with pagination support</div>
+                        `;
+                    } else {
+                        resultsDiv.innerHTML = `
+                            <div class="info">ℹ Not enough collections to test pagination</div>
+                            <div>Found ${firstPage.collections.length} collections total</div>
+                        `;
+                    }
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = `<div class="error">✗ Error: ${error.message}</div>`;
+            }
+        }
+    </script>
+</body>
+</html>
