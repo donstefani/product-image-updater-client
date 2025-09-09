@@ -21,6 +21,10 @@ export function PasswordPage({ onPasswordCorrect }: PasswordPageProps) {
   // Password from app config
   const correctPassword = APP_CONFIG.password;
 
+  console.log('Correct password:', JSON.stringify(correctPassword));
+  console.log('Password:', JSON.stringify(password));
+  console.log('Passwords match:', password === correctPassword);
+
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
     setIsLoading(true);
