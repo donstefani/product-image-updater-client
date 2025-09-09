@@ -35,27 +35,62 @@ export class ServerApiService {
     collections: ShopifyCollection[], 
     pageInfo: { hasNextPage: boolean, endCursor?: string } 
   }> {
-    // Build query parameters
-    const params = new URLSearchParams({
-      limit: limit.toString(),
-      ...(after && { after })
-    });
-    
-    const response = await this.makeRequest<{ 
-      collections: ShopifyCollection[], 
-      pageInfo: { hasNextPage: boolean, endCursor?: string } 
-    }>(`${API_ENDPOINTS.collections}?${params}`);
-    
-    // Filter collections based on the search query
-    const filteredCollections = response.collections.filter((collection: ShopifyCollection) =>
-      collection.title.toLowerCase().includes(query.toLowerCase()) ||
-      collection.handle.toLowerCase().includes(query.toLowerCase())
-    );
-    
-    return { 
-      collections: filteredCollections, 
-      pageInfo: response.pageInfo 
-    };
+    // For search functionality, we need to get all collections first, then filter and paginate
+    // This is because server-side pagination happens before client-side filtering
+    if (query.trim()) {
+      // Get all collections for search (we'll implement proper server-side search later)
+      const allCollections: ShopifyCollection[] = [];
+      let hasMore = true;
+      let cursor: string | undefined;
+      
+      while (hasMore) {
+        const params = new URLSearchParams({
+          limit: '50', // Get more per request to reduce API calls
+          ...(cursor && { after: cursor })
+        });
+        
+        const response = await this.makeRequest<{ 
+          collections: ShopifyCollection[], 
+          pageInfo: { hasNextPage: boolean, endCursor?: string } 
+        }>(`${API_ENDPOINTS.collections}?${params}`);
+        
+        allCollections.push(...response.collections);
+        hasMore = response.pageInfo.hasNextPage;
+        cursor = response.pageInfo.endCursor;
+      }
+      
+      // Filter collections based on the search query
+      const filteredCollections = allCollections.filter((collection: ShopifyCollection) =>
+        collection.title.toLowerCase().includes(query.toLowerCase()) ||
+        collection.handle.toLowerCase().includes(query.toLowerCase())
+      );
+      
+      // Implement client-side pagination
+      const startIndex = after ? parseInt(after) : 0;
+      const endIndex = startIndex + limit;
+      const paginatedCollections = filteredCollections.slice(startIndex, endIndex);
+      
+      return {
+        collections: paginatedCollections,
+        pageInfo: {
+          hasNextPage: endIndex < filteredCollections.length,
+          endCursor: endIndex < filteredCollections.length ? endIndex.toString() : undefined
+        }
+      };
+    } else {
+      // For no search query, use server-side pagination directly
+      const params = new URLSearchParams({
+        limit: limit.toString(),
+        ...(after && { after })
+      });
+      
+      const response = await this.makeRequest<{ 
+        collections: ShopifyCollection[], 
+        pageInfo: { hasNextPage: boolean, endCursor?: string } 
+      }>(`${API_ENDPOINTS.collections}?${params}`);
+      
+      return response;
+    }
   }
 
   async getCollection(id: string): Promise<{ collection: ShopifyCollection }> {
@@ -63,9 +98,27 @@ export class ServerApiService {
   }
 
   // Product operations
-  async getProductsFromCollection(collectionId: string, limit: number = 50): Promise<{ products: ShopifyProduct[] }> {
-    console.log('Getting products from collection:', collectionId, 'limit:', limit);
-    const response = await this.makeRequest<{ products: ShopifyProduct[] }>(`${API_ENDPOINTS.products}?collection_id=${collectionId}&limit=${limit}`);
+  async getProductsFromCollection(
+    collectionId: string, 
+    limit: number = 20, 
+    after?: string
+  ): Promise<{ 
+    products: ShopifyProduct[], 
+    pageInfo: { hasNextPage: boolean, endCursor?: string } 
+  }> {
+    console.log('Getting products from collection:', collectionId, 'limit:', limit, 'after:', after);
+    
+    const params = new URLSearchParams({
+      collection_id: collectionId,
+      limit: limit.toString(),
+      ...(after && { after })
+    });
+    
+    const response = await this.makeRequest<{ 
+      products: ShopifyProduct[], 
+      pageInfo: { hasNextPage: boolean, endCursor?: string } 
+    }>(`${API_ENDPOINTS.products}?${params}`);
+    
     console.log('Products response:', response);
     return response;
   }
