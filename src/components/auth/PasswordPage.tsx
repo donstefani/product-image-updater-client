@@ -26,6 +26,11 @@ export function PasswordPage({ onPasswordCorrect }: PasswordPageProps) {
     setIsLoading(true);
     setError('');
 
+    // Debug logging
+    console.log('Entered password:', JSON.stringify(password));
+    console.log('Correct password:', JSON.stringify(correctPassword));
+    console.log('Passwords match:', password === correctPassword);
+
     // Simulate a small delay for better UX
     await new Promise(resolve => setTimeout(resolve, 500));
 
