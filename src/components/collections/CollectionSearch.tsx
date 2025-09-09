@@ -12,28 +12,50 @@ export function CollectionSearch({ onCollectionSelect }: CollectionSearchProps) 
   const [collections, setCollections] = useState<ShopifyCollection[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [pageInfo, setPageInfo] = useState<{ hasNextPage: boolean, endCursor?: string }>({ hasNextPage: false });
+  const [currentPage, setCurrentPage] = useState(1);
   const [serverApiService] = useState(() => new ServerApiService());
 
-  const handleSearch = async () => {
+  const ITEMS_PER_PAGE = 10;
+
+  const handleSearch = async (page: number = 1, after?: string) => {
     if (!searchQuery.trim()) return;
 
     setIsLoading(true);
     setError(null);
 
     try {
-      console.log('Searching collections with query:', searchQuery);
+      console.log('Searching collections with query:', searchQuery, 'page:', page);
       
-      // Call the server API to search collections
-      const response = await serverApiService.searchCollections(searchQuery);
-      setCollections(response.collections);
+      // Call the server API to search collections with pagination
+      const response = await serverApiService.searchCollections(
+        searchQuery, 
+        ITEMS_PER_PAGE, 
+        page === 1 ? undefined : after
+      );
       
-      console.log('Collections found:', response.collections.length);
+      if (page === 1) {
+        setCollections(response.collections);
+      } else {
+        setCollections(prev => [...prev, ...response.collections]);
+      }
+      
+      setPageInfo(response.pageInfo);
+      setCurrentPage(page);
+      
+      console.log('Collections found:', response.collections.length, 'pageInfo:', response.pageInfo);
     } catch (err) {
       console.error('Collection search error:', err);
       setError(err instanceof Error ? err.message : 'Failed to search collections. Please try again.');
       setCollections([]);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const handleLoadMore = () => {
+    if (pageInfo.hasNextPage && pageInfo.endCursor) {
+      handleSearch(currentPage + 1, pageInfo.endCursor);
     }
   };
 
@@ -146,6 +168,19 @@ export function CollectionSearch({ onCollectionSelect }: CollectionSearchProps) 
                   </div>
                 </div>
               ))}
+              
+              {pageInfo.hasNextPage && (
+                <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                  <Button 
+                    onClick={handleLoadMore} 
+                    loading={isLoading}
+                    disabled={isLoading}
+                    variant="secondary"
+                  >
+                    Load More Collections
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

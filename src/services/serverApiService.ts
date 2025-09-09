@@ -27,9 +27,24 @@ export class ServerApiService {
   }
 
   // Collection operations
-  async searchCollections(query: string): Promise<{ collections: ShopifyCollection[] }> {
-    // The server doesn't have a search endpoint, so we get all collections and filter client-side
-    const response = await this.makeRequest<{ collections: ShopifyCollection[] }>(`${API_ENDPOINTS.collections}`);
+  async searchCollections(
+    query: string, 
+    limit: number = 10, 
+    after?: string
+  ): Promise<{ 
+    collections: ShopifyCollection[], 
+    pageInfo: { hasNextPage: boolean, endCursor?: string } 
+  }> {
+    // Build query parameters
+    const params = new URLSearchParams({
+      limit: limit.toString(),
+      ...(after && { after })
+    });
+    
+    const response = await this.makeRequest<{ 
+      collections: ShopifyCollection[], 
+      pageInfo: { hasNextPage: boolean, endCursor?: string } 
+    }>(`${API_ENDPOINTS.collections}?${params}`);
     
     // Filter collections based on the search query
     const filteredCollections = response.collections.filter((collection: ShopifyCollection) =>
@@ -37,7 +52,10 @@ export class ServerApiService {
       collection.handle.toLowerCase().includes(query.toLowerCase())
     );
     
-    return { collections: filteredCollections };
+    return { 
+      collections: filteredCollections, 
+      pageInfo: response.pageInfo 
+    };
   }
 
   async getCollection(id: string): Promise<{ collection: ShopifyCollection }> {
