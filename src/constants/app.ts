@@ -2,6 +2,7 @@ export const APP_CONFIG = {
   title: 'Product Image Updater',
   version: '1.0.0',
   apiBaseUrl: import.meta.env.VITE_API_BASE_URL || 'https://h0bru07jm2.execute-api.us-east-2.amazonaws.com/production',
+  password: import.meta.env.VITE_APP_PASSWORD || 'stefani',
 } as const;
 
 export const API_ENDPOINTS = {
