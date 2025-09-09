@@ -44,6 +44,7 @@ export function CollectionSearch({ onCollectionSelect }: CollectionSearchProps) 
       setCurrentPage(page);
       
       console.log('Collections found:', response.collections.length, 'pageInfo:', response.pageInfo);
+      console.log('Current page:', page, 'hasNextPage:', response.pageInfo.hasNextPage);
     } catch (err) {
       console.error('Collection search error:', err);
       setError(err instanceof Error ? err.message : 'Failed to search collections. Please try again.');
@@ -123,6 +124,8 @@ export function CollectionSearch({ onCollectionSelect }: CollectionSearchProps) 
             <div style={{ display: 'flex', flexDirection: 'column', gap: '0.5rem' }}>
               <Text variant="bodySm" as="p">
                 Found {collections.length} collection{collections.length !== 1 ? 's' : ''}:
+                {pageInfo.hasNextPage && <span> (Page {currentPage}, more available)</span>}
+                {!pageInfo.hasNextPage && currentPage > 1 && <span> (All pages loaded)</span>}
               </Text>
               
               {collections.map((collection) => (

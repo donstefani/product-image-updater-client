@@ -14,12 +14,16 @@ export function HomePage() {
   const [selectedProductIds, setSelectedProductIds] = useState<Set<string>>(new Set());
   const [isLoadingProducts, setIsLoadingProducts] = useState(false);
   const [productError, setProductError] = useState<string | null>(null);
+  const [productPageInfo, setProductPageInfo] = useState<{ hasNextPage: boolean, endCursor?: string }>({ hasNextPage: false });
+  const [currentProductPage, setCurrentProductPage] = useState(1);
+
+  const PRODUCTS_PER_PAGE = 10;
   
   // Information dialog state
   const [showInfoDialog, setShowInfoDialog] = useState(false);
 
-  const handleCollectionSelect = async (collection: ShopifyCollection) => {
-    console.log('handleCollectionSelect called with:', collection);
+  const handleCollectionSelect = async (collection: ShopifyCollection, page: number = 1, after?: string) => {
+    console.log('handleCollectionSelect called with:', collection, 'page:', page);
     console.log('shop:', shop);
     console.log('serverApiService:', serverApiService);
     
@@ -37,16 +41,32 @@ export function HomePage() {
     setSelectedCollection(collection);
     setIsLoadingProducts(true);
     setProductError(null);
-    setSelectedProductIds(new Set()); // Clear selections when changing collection
+    
+    // Clear selections when changing collection (only on first page)
+    if (page === 1) {
+      setSelectedProductIds(new Set());
+    }
     
     try {
-      console.log('Fetching products from collection:', collection.id);
+      console.log('Fetching products from collection:', collection.id, 'page:', page);
       
-      // Use the server API service to get products from the collection
-      const response = await serverApiService.getProductsFromCollection(collection.id, 50);
-      setProducts(response.products);
+      // Use the server API service to get products from the collection with pagination
+      const response = await serverApiService.getProductsFromCollection(
+        collection.id, 
+        PRODUCTS_PER_PAGE, 
+        page === 1 ? undefined : after
+      );
       
-      console.log('Products loaded:', response.products.length);
+      if (page === 1) {
+        setProducts(response.products);
+      } else {
+        setProducts(prev => [...prev, ...response.products]);
+      }
+      
+      setProductPageInfo(response.pageInfo);
+      setCurrentProductPage(page);
+      
+      console.log('Products loaded:', response.products.length, 'pageInfo:', response.pageInfo);
     } catch (err) {
       console.error('Error fetching products:', err);
       setProductError(err instanceof Error ? err.message : 'Failed to fetch products');
@@ -71,6 +91,12 @@ export function HomePage() {
       newSelected.add(productId);
     }
     setSelectedProductIds(newSelected);
+  };
+
+  const handleLoadMoreProducts = () => {
+    if (productPageInfo.hasNextPage && productPageInfo.endCursor && selectedCollection) {
+      handleCollectionSelect(selectedCollection, currentProductPage + 1, productPageInfo.endCursor);
+    }
   };
 
   const handleImageUpdateComplete = (operation: ImageUpdateOperation) => {
@@ -144,12 +170,27 @@ export function HomePage() {
                   )}
 
                   {!isLoadingProducts && products.length > 0 && (
-                    <ProductGrid
-                      products={products}
-                      selectedProducts={selectedProductIds}
-                      onProductSelect={handleProductSelect}
-                      onProductsSelect={handleProductsSelect}
-                    />
+                    <>
+                      <ProductGrid
+                        products={products}
+                        selectedProducts={selectedProductIds}
+                        onProductSelect={handleProductSelect}
+                        onProductsSelect={handleProductsSelect}
+                      />
+                      
+                      {productPageInfo.hasNextPage && (
+                        <div style={{ marginTop: '1rem', textAlign: 'center' }}>
+                          <Button 
+                            onClick={handleLoadMoreProducts} 
+                            loading={isLoadingProducts}
+                            disabled={isLoadingProducts}
+                            variant="secondary"
+                          >
+                            Load More Products
+                          </Button>
+                        </div>
+                      )}
+                    </>
                   )}
 
                   {!isLoadingProducts && products.length === 0 && !productError && (
